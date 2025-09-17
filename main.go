@@ -1,7 +1,7 @@
 package main
 
 import (
-	"SWoMatic-Core/internal/info"
+	"SWoMatic-Core/info"
 	"flag"
 	"fmt"
 	"os"
