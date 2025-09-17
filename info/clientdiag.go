@@ -16,11 +16,8 @@ func ListClientSerialPorts() []string {
 		fmt.Println("No serial ports found")
 		return nil
 	}
-	fmt.Println("Available serial ports:")
+	// fmt.Println("Available serial ports:")
 	var result []string
-	for _, port := range ports {
-		fmt.Println(" -", port)
-		result = append(result, port)
-	}
+	result = append(result, ports...)
 	return result
 }

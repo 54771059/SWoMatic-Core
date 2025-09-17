@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"slices"
 )
 
 func main() {
@@ -15,11 +16,13 @@ func main() {
 	listModes := flag.Bool("lmode", false, "List serial connection modes")
 	verbose := flag.Bool("v", false, "Toggle verbose output")
 	selectedMode := flag.String("mode", "cisco", "Set serial connection mode (cisco, aruba, huawei, tplink)")
+	selectedClientSerialPort := flag.String("csp", "", "Set client serial port (e.g., COM3, /dev/ttyUSB0)")
 
 	// Parse flags
 	flag.Parse()
 
-	fmt.Println("SWoMatic-Core ~>")
+	// Banner
+	fmt.Println("<~ SWoMatic-Core ~>")
 
 	// Check if the -lcsp flag was passed
 	if *listClientSerialPorts {
@@ -27,12 +30,13 @@ func main() {
 		os.Exit(0) // Exit after listing ports
 	}
 
+	// Check if the -lmode flag was passed
 	if *listModes {
 		info.ListConnectionModes()
 		os.Exit(0) // Exit after listing modes
 	}
 
-	// Lookup selected mode
+	// Lookup selected mode & handle empty or unknown mode
 	mode, ok := constants.SerialModes[*selectedMode]
 	if !ok {
 		fmt.Fprintf(os.Stderr, "Error: Unknown mode \"%s\"\n", *selectedMode)
@@ -40,11 +44,29 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Display selected mode
+	fmt.Printf("Using serial mode: %s\n", *selectedMode)
 	if *verbose {
 		// Mode Info
-		fmt.Printf("Using serial mode: %s\n", *selectedMode)
 		fmt.Printf("BaudRate: %d, DataBits: %d, Parity: %s, StopBits: %s\n",
 			mode.BaudRate, mode.DataBits, utils.ParityToString(mode.Parity), utils.StopBitsToString(mode.StopBits))
 	}
+	// Handle empty client serial port
+	if *selectedClientSerialPort == "" {
+		fmt.Fprintln(os.Stderr, "Error: No client serial port specified. Use the -csp flag to set it.")
+		os.Exit(1)
+	}
 
+	// Validate selected client serial port
+	ports := info.ListClientSerialPorts()
+	found := slices.Contains(ports, *selectedClientSerialPort)
+	if !found {
+		fmt.Fprintf(os.Stderr, "Error: Specified client serial port \"%s\" not found.\n", *selectedClientSerialPort)
+		fmt.Fprintln(os.Stderr, "Available ports:")
+		for _, port := range ports {
+			fmt.Fprintln(os.Stderr, "  ", port)
+		}
+		os.Exit(1)
+	}
+	fmt.Printf("Using serial port: %s\n", *selectedClientSerialPort)
 }
