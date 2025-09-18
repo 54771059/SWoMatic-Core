@@ -6,26 +6,50 @@ import (
 
 // Define named serial modes
 var SerialModes = map[string]*serial.Mode{
-	"cisco": {
+	"default": {
 		BaudRate: 9600,
 		DataBits: 8,
 		Parity:   serial.NoParity,
 		StopBits: serial.OneStopBit,
 	},
-	"aruba": {
+	"cisco":  {
 		BaudRate: 9600,
 		DataBits: 8,
 		Parity:   serial.NoParity,
 		StopBits: serial.OneStopBit,
-	},
+	}, // uses default settings
+	"aruba":  {
+		BaudRate: 9600,
+		DataBits: 8,
+		Parity:   serial.NoParity,
+		StopBits: serial.OneStopBit,
+	}, // uses default settings
 	"huawei": {
 		BaudRate: 9600,
 		DataBits: 8,
 		Parity:   serial.NoParity,
 		StopBits: serial.OneStopBit,
-	},
+	}, // uses default settings
 	"tplink": {
 		BaudRate: 38400,
+		DataBits: 8,
+		Parity:   serial.NoParity,
+		StopBits: serial.OneStopBit,
+	},
+	"juniper": {
+		BaudRate: 9600,
+		DataBits: 8,
+		Parity:   serial.NoParity,
+		StopBits: serial.OneStopBit,
+	},
+	"hp": {
+		BaudRate: 115200,
+		DataBits: 8,
+		Parity:   serial.NoParity,
+		StopBits: serial.OneStopBit,
+	},
+	"dell": {
+		BaudRate: 115200,
 		DataBits: 8,
 		Parity:   serial.NoParity,
 		StopBits: serial.OneStopBit,
