@@ -5,6 +5,7 @@ import (
 	"SWoMatic-Core/info"
 	"SWoMatic-Core/internal/constants"
 	"SWoMatic-Core/internal/utils"
+	"SWoMatic-Core/session"
 	"flag"
 	"fmt"
 	"os"
@@ -16,9 +17,10 @@ func main() {
 	listClientSerialPorts := flag.Bool("lcsp", false, "List client serial ports")
 	listModes := flag.Bool("lmode", false, "List serial connection modes")
 	verbose := flag.Bool("v", false, "Toggle verbose output")
-	selectedMode := flag.String("mode", "cisco", "Set serial connection mode (cisco, aruba, huawei, tplink)")
+	selectedMode := flag.String("mode", "default", "Set serial connection mode (cisco, aruba, huawei, tplink)")
 	selectedClientSerialPort := flag.String("csp", "", "Set client serial port (e.g., COM3, /dev/ttyUSB0)")
 	autoDetectPort := flag.Bool("auto", false, "Automatically detect connection settings")
+	selectedVendor := flag.String("vendor", "default", "Set vendor (cisco, aruba, huawei, tplink)")
 
 	// Parse flags
 	flag.Parse()
@@ -38,9 +40,14 @@ func main() {
 		os.Exit(0) // Exit after listing modes
 	}
 
+	var switches []auto.SwitchPort
 	if *autoDetectPort {
-		fmt.Println(auto.SwitchSweeper())
-		os.Exit(0)
+		switches = auto.SwitchSweeper()
+		fmt.Println(switches)
+		// TODO: Handle multi selection
+		*selectedVendor = switches[0].Type
+		*selectedClientSerialPort = switches[0].PortName
+		*selectedMode = switches[0].ConnModeName
 	}
 
 	// Lookup selected mode & handle empty or unknown mode
@@ -52,15 +59,21 @@ func main() {
 	}
 
 	// Display selected mode
-	fmt.Printf("Using serial mode: %s\n", *selectedMode)
+	
 	if *verbose {
+		fmt.Printf("Using serial mode: %s\n", *selectedMode)
 		// Mode Info
 		fmt.Printf("BaudRate: %d, DataBits: %d, Parity: %s, StopBits: %s\n",
 			mode.BaudRate, mode.DataBits, utils.ParityToString(mode.Parity), utils.StopBitsToString(mode.StopBits))
 	}
 	// Handle empty client serial port
-	if *selectedClientSerialPort == "" {
+	if *selectedClientSerialPort == "" && !*autoDetectPort {
 		fmt.Fprintln(os.Stderr, "Error: No client serial port specified. Use the -csp flag to set it or use -auto")
+		os.Exit(1)
+	}
+
+	if *selectedVendor == "" && !*autoDetectPort {
+		fmt.Fprintln(os.Stderr, "Error: No vendor specified. Use the -vendor flag to set it or use -auto")
 		os.Exit(1)
 	}
 
@@ -75,6 +88,9 @@ func main() {
 		}
 		os.Exit(1)
 	}
-	fmt.Printf("Using serial port: %s\n", *selectedClientSerialPort)
-
+	if *verbose {
+		fmt.Printf("Using serial port: %s\n", *selectedClientSerialPort)
+	}
+	
+	session.InitiateSession(*selectedClientSerialPort, *selectedVendor, *mode, *verbose)
 }
