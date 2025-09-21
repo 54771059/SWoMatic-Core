@@ -24,7 +24,6 @@ func main() {
 	runningMode := flag.String("rmode", "", "Set running mode lbl (LineByLine)")
 	filePath := flag.String("file", "", "Set config path")
 
-
 	// Parse flags
 	flag.Parse()
 
@@ -97,7 +96,7 @@ func main() {
 
 	// Validate running mode
 	if *runningMode != "lbl" {
-		fmt.Fprintf(os.Stderr, "Error: Unknown running mode \"%s\"\n", *runningMode)
+		fmt.Fprintf(os.Stderr, "Error: Unknown running mode \"%s\"\n use -rmode lbl", *runningMode)
 		os.Exit(1)
 	}
 
