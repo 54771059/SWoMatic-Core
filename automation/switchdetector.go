@@ -1,12 +1,14 @@
 package auto
 
 import (
+	privs "SWoMatic-Core/commands"
 	"SWoMatic-Core/internal/constants"
 	"fmt"
 	"os"
 	"regexp"
 	"strings"
 	"time"
+	"SWoMatic-Core/internal/io"
 
 	"go.bug.st/serial"
 	// "SWoMatic-Core/info"
@@ -15,25 +17,6 @@ import (
 type switchPort struct {
 	Type     string
 	PortName string
-}
-
-func readOutput(port serial.Port) string {
-	buff := make([]byte, 100)
-	response := ""
-	for {
-		port.SetReadTimeout(time.Millisecond * 50)
-		n, err := port.Read(buff)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "%s", err)
-			break
-		}
-		if n == 0 {
-			break
-		}
-		response += string(buff[:n])
-	}
-
-	return response
 }
 
 func portProbeAliveCheck(portName string, connMode serial.Mode, verbose bool) (bool, string) {
@@ -48,11 +31,13 @@ func portProbeAliveCheck(portName string, connMode serial.Mode, verbose bool) (b
 		fmt.Fprintf(os.Stderr, "%s", err)
 		return false, ""
 	}
-
-	// Send the equivalent of Ctrl+C to clear any left over commands
-	n, err := port.Write([]byte("\x03"))
+	// First, send carriage return and newline to wake up the switch if it's asleep
 	port.Write([]byte("\r\n"))
-	port.Write([]byte("\x03"))
+	response := io.ReadOutput(port)
+	privs.PasswordHandler(port, response)
+	// Then, send Ctrl+C to clear any leftover command or prompt
+	n, err := port.Write([]byte("\x03"))
+	io.ReadOutput(port)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s", err)
 		port.Close()
@@ -64,11 +49,10 @@ func portProbeAliveCheck(portName string, connMode serial.Mode, verbose bool) (b
 		fmt.Println()
 	}
 
-	response := readOutput(port)
-
 	if response != "" {
-		fmt.Println(response)
-		// Here, you can implement logic to detect the switch type from the response.
+		if verbose {
+			fmt.Println(response)
+		}
 		switchType := detectSwitchType(port)
 		port.Close()
 		return true, switchType
@@ -82,7 +66,7 @@ func detectSwitchType(activePort serial.Port) string {
 	activePort.Write([]byte("\x03")) // Cancel current input
 	time.Sleep(200 * time.Millisecond)
 
-	s := readOutput(activePort)
+	s := io.ReadOutput(activePort)
 
 	switch {
 	case regexp.MustCompile(`(?m)^<.*?>\s*$`).MatchString(s) ||
@@ -96,7 +80,7 @@ func detectSwitchType(activePort serial.Port) string {
 		// Ambiguous: could be Cisco or Aruba — send "show version"
 		activePort.Write([]byte("show version\r"))
 		time.Sleep(500 * time.Millisecond)
-		version := readOutput(activePort)
+		version := io.ReadOutput(activePort)
 		if strings.Contains(version, "Cisco") {
 			return "Cisco"
 		}
