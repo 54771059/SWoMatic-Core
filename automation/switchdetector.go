@@ -3,20 +3,21 @@ package auto
 import (
 	privs "SWoMatic-Core/commands"
 	"SWoMatic-Core/internal/constants"
+	"SWoMatic-Core/internal/io"
 	"fmt"
 	"os"
 	"regexp"
 	"strings"
 	"time"
-	"SWoMatic-Core/internal/io"
 
 	"go.bug.st/serial"
 	// "SWoMatic-Core/info"
 )
 
-type switchPort struct {
-	Type     string
-	PortName string
+type SwitchPort struct {
+	Type         string
+	PortName     string
+	ConnModeName string
 }
 
 func portProbeAliveCheck(portName string, connMode serial.Mode, verbose bool) (bool, string) {
@@ -34,7 +35,9 @@ func portProbeAliveCheck(portName string, connMode serial.Mode, verbose bool) (b
 	// First, send carriage return and newline to wake up the switch if it's asleep
 	port.Write([]byte("\r\n"))
 	response := io.ReadOutput(port)
-	privs.PasswordHandler(port, response)
+	if response != "" {
+		privs.PasswordHandler(port, response, false)
+	}
 	// Then, send Ctrl+C to clear any leftover command or prompt
 	n, err := port.Write([]byte("\x03"))
 	io.ReadOutput(port)
@@ -94,8 +97,8 @@ func detectSwitchType(activePort serial.Port) string {
 	}
 }
 
-func SwitchSweeper() []switchPort {
-	var foundSwitches []switchPort
+func SwitchSweeper() []SwitchPort {
+	var foundSwitches []SwitchPort
 	ports, err := serial.GetPortsList()
 
 	if len(ports) == 0 {
@@ -114,18 +117,35 @@ func SwitchSweeper() []switchPort {
 		var isAlive bool
 		var switchType string
 
-		// Try each mode until we get a response
-		for _, mode := range modes {
-			isAlive, switchType = portProbeAliveCheck(portName, *mode, false)
+		// 1. Try "default" mode first
+		if defaultMode, ok := modes["default"]; ok {
+			isAlive, switchType = portProbeAliveCheck(portName, *defaultMode, false)
 			if isAlive {
-				foundSwitches = append(foundSwitches, switchPort{
-					Type:     switchType,
-					PortName: portName,
+				foundSwitches = append(foundSwitches, SwitchPort{
+					Type:         switchType,
+					PortName:     portName,
+					ConnModeName: "default",
 				})
-				break // Found a working mode, no need to try others
+				continue // Move to next port
+			}
+		}
+
+		// 2. Try remaining modes (skip "default" to avoid retrying it)
+		for modeName, currMode := range modes {
+			if modeName == "default" {
+				continue
+			}
+
+			isAlive, switchType = portProbeAliveCheck(portName, *currMode, false)
+			if isAlive {
+				foundSwitches = append(foundSwitches, SwitchPort{
+					Type:         switchType,
+					PortName:     portName,
+					ConnModeName: modeName,
+				})
+				break // Found a working mode, move to next port
 			}
 		}
 	}
-
 	return foundSwitches
 }
