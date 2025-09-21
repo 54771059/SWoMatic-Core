@@ -15,12 +15,15 @@ import (
 func main() {
 	// Define flags
 	listClientSerialPorts := flag.Bool("lcsp", false, "List client serial ports")
-	listModes := flag.Bool("lmode", false, "List serial connection modes")
+	listModes := flag.Bool("lcmode", false, "List serial connection modes")
 	verbose := flag.Bool("v", false, "Toggle verbose output")
-	selectedMode := flag.String("mode", "default", "Set serial connection mode (cisco, aruba, huawei, tplink)")
+	selectedMode := flag.String("cmode", "default", "Set serial connection mode (cisco, aruba, huawei, tplink)")
 	selectedClientSerialPort := flag.String("csp", "", "Set client serial port (e.g., COM3, /dev/ttyUSB0)")
 	autoDetectPort := flag.Bool("auto", false, "Automatically detect connection settings")
 	selectedVendor := flag.String("vendor", "default", "Set vendor (cisco, aruba, huawei, tplink)")
+	runningMode := flag.String("rmode", "", "Set running mode lbl (LineByLine)")
+	filePath := flag.String("file", "", "Set config path")
+
 
 	// Parse flags
 	flag.Parse()
@@ -59,7 +62,7 @@ func main() {
 	}
 
 	// Display selected mode
-	
+
 	if *verbose {
 		fmt.Printf("Using serial mode: %s\n", *selectedMode)
 		// Mode Info
@@ -91,6 +94,17 @@ func main() {
 	if *verbose {
 		fmt.Printf("Using serial port: %s\n", *selectedClientSerialPort)
 	}
-	
-	session.InitiateSession(*selectedClientSerialPort, *selectedVendor, *mode, *verbose)
+
+	// Validate running mode
+	if *runningMode != "lbl" {
+		fmt.Fprintf(os.Stderr, "Error: Unknown running mode \"%s\"\n", *runningMode)
+		os.Exit(1)
+	}
+
+	if *filePath == "" && *runningMode == "lbl" {
+		fmt.Fprintln(os.Stderr, "Error: No file path specified for line-by-line mode.")
+		os.Exit(1)
+	}
+
+	session.InitiateSession(*selectedClientSerialPort, *selectedVendor, *mode, *verbose, *runningMode, *filePath)
 }

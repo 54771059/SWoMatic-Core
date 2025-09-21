@@ -1,24 +1,23 @@
 package session
 
 import (
-	privs "SWoMatic-Core/commands"
-	"SWoMatic-Core/internal/io"
+	auto "SWoMatic-Core/automation"
 	"fmt"
 
 	"go.bug.st/serial"
 )
 
-func InitiateSession(portName string, vendor string, mode serial.Mode, verbose bool) {
+func InitiateSession(portName string, vendor string, mode serial.Mode, verbose bool, runningMode string, filePath string) {
 	switch vendor {
 	case "Cisco":
-		ciscoSession(portName, mode, verbose)
+		ciscoSession(portName, mode, verbose, runningMode, filePath)
 	default:
 		// Handle unknown vendor
 		return
 	}
 }
 
-func ciscoSession(portName string, mode serial.Mode, verbose bool) {
+func ciscoSession(portName string, mode serial.Mode, verbose bool, runningMode string, filePath string) {
 	if verbose {
 
 	}
@@ -29,11 +28,10 @@ func ciscoSession(portName string, mode serial.Mode, verbose bool) {
 		return
 	}
 
-
 	// Dummy test
-	privs.ElevatePrivilege(port, "Cisco")
-	port.Write([]byte("\n"))
-	response := io.ReadOutput(port)
-	fmt.Println(response)
+	if runningMode == "lbl" {
+		auto.LineByLineReadCisco(filePath, port)
+	}
+
 	port.Close()
 }
